@@ -1,0 +1,15 @@
+{
+  "name": "atividade-crud-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Front-end consumidor da API CRUD — Aula 05 (Criando APIs para o front-end)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}

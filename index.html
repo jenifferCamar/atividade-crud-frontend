@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CRUD Notas — Front-End</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; min-height: 100vh; padding: 2rem; }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { text-align: center; margin-bottom: 1.5rem; color: #6c75c2; }
+    .status { padding: 0.8rem; margin-bottom: 1rem; border-radius: 8px; text-align: center; }
+    .loading { background: rgba(255,193,7,0.2); color: #ffc107; }
+    .success { background: rgba(76,175,80,0.2); color: #4caf50; }
+    .error { background: rgba(244,67,54,0.2); color: #f44336; }
+    form { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+    form input { flex: 1; padding: 0.6rem; border: 1px solid #333; border-radius: 6px; background: #16213e; color: #e0e0e0; }
+    form button { padding: 0.6rem 1.2rem; background: #6c75c2; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+    form button:hover { background: #7d8ac9; }
+    ul { list-style: none; }
+    li { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; border: 1px solid #333; border-radius: 6px; margin-bottom: 0.5rem; background: #16213e; }
+    .nota-titulo { flex: 1; }
+    .nota-titulo.concluida { text-decoration: line-through; opacity: 0.6; }
+    .checkbox { margin-right: 0.5rem; cursor: pointer; }
+    .btn-excluir { background: #e94560; color: #fff; border: none; padding: 0.3rem 0.8rem; border-radius: 4px; cursor: pointer; }
+    .btn-excluir:hover { background: #ff6b6b; }
+    .btn-atualizar { background: #1abc9c; color: #fff; border: none; padding: 0.3rem 0.8rem; border-radius: 4px; cursor: pointer; margin-left: 0.5rem; }
+    .btn-atualizar:hover { background: #2ab7ca; }
+    .vazio { text-align: center; color: #888; padding: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📓 CRUD de Notas</h1>
+    <div id="status" class="status loading" style="display: none;"></div>
+    <form id="form-nova">
+      <input type="text" id="titulo" placeholder="Digite uma nota..." required />
+      <button type="submit">Adicionar</button>
+    </form>
+    <ul id="lista"></ul>
+  </div>
+
+  <script>
+    const API_URL = (import.meta && import.meta.env && import.meta.env.VITE_API_URL)
+      || 'https://atividade-crud-api.onrender.com';
+
+    const statusEl = document.getElementById('status');
+    const listaEl = document.getElementById('lista');
+    const form = document.getElementById('form-nova');
+    const inputTitulo = document.getElementById('titulo');
+
+    let notas = [];
+
+    function mostrarStatus(mensagem, tipo) {
+      statusEl.textContent = mensagem;
+      statusEl.className = 'status ' + tipo;
+      statusEl.style.display = 'block';
+    }
+
+    function esconderStatus() {
+      statusEl.style.display = 'none';
+    }
+
+    async function carregarNotas() {
+      mostrarStatus('Carregando notas...', 'loading');
+      try {
+        const resposta = await fetch(`${API_URL}/api/notas`);
+        if (!resposta.ok) throw new Error(`Erro ${resposta.status}`);
+        notas = await resposta.json();
+        renderizarNotas(notas);
+        mostrarStatus('Notas carregadas com sucesso!', 'success');
+        setTimeout(esconderStatus, 2000);
+      } catch (erro) {
+        mostrarStatus(`Erro: ${erro.message}`, 'error');
+      }
+    }
+
+    function renderizarNotas(lista) {
+      listaEl.innerHTML = '';
+      if (lista.length === 0) {
+        listaEl.innerHTML = '<li class="vazio">Nenhuma nota encontrada.</li>';
+        return;
+      }
+      lista.forEach(nota => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <span>
+            <input type="checkbox" class="checkbox" ${nota.concluido ? 'checked' : ''}
+              onchange="toggleConcluido(${nota.id}, this.checked)" />
+            <span class="nota-titulo ${nota.concluido ? 'concluida' : ''}">${nota.titulo}</span>
+          </span>
+          <div>
+            <button class="btn-atualizar" onclick="editarNota(${nota.id})">Editar</button>
+            <button class="btn-excluir" onclick="deletarNota(${nota.id})">Excluir</button>
+          </div>
+        `;
+        listaEl.appendChild(li);
+      });
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const titulo = inputTitulo.value.trim();
+      if (!titulo) return;
+      try {
+        const resposta = await fetch(`${API_URL}/api/notas`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ titulo, concluido: false })
+        });
+        if (!resposta.ok) throw new Error(`Erro ${resposta.status}`);
+        inputTitulo.value = '';
+        carregarNotas();
+        mostrarStatus('Nota criada com sucesso!', 'success');
+      } catch (erro) {
+        mostrarStatus(`Erro: ${erro.message}`, 'error');
+      }
+    });
+
+    window.deletarNota = async function(id) {
+      if (!confirm('Tem certeza que deseja excluir?')) return;
+      try {
+        const resposta = await fetch(`${API_URL}/api/notas/${id}`, { method: 'DELETE' });
+        if (!resposta.ok) throw new Error(`Erro ${resposta.status}`);
+        carregarNotas();
+        mostrarStatus('Nota excluída!', 'success');
+      } catch (erro) {
+        mostrarStatus(`Erro: ${erro.message}`, 'error');
+      }
+    };
+
+    window.toggleConcluido = async function(id, concluido) {
+      try {
+        const nota = notas.find(n => n.id === id);
+        const resposta = await fetch(`${API_URL}/api/notas/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ titulo: nota.titulo, concluido })
+        });
+        if (!resposta.ok) throw new Error(`Erro ${resposta.status}`);
+        carregarNotas();
+      } catch (erro) {
+        mostrarStatus(`Erro: ${erro.message}`, 'error');
+      }
+    };
+
+    window.editarNota = function(id) {
+      const nota = notas.find(n => n.id === id);
+      const novoTitulo = prompt('Digite o novo título:', nota.titulo);
+      if (novoTitulo && novoTitulo.trim()) {
+        fetch(`${API_URL}/api/notas/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ titulo: novoTitulo, concluido: nota.concluido })
+        }).then(() => carregarNotas());
+      }
+    };
+
+    carregarNotas();
+  </script>
+</body>
+</html>
